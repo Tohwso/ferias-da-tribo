@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}Gestão de Férias{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🏖️ Gestão de Férias</h1>
+    <button class="btn btn-primary" onclick="openVacationModal()">+ Novo Evento</button>
+</div>
+
+<div class="filters-bar">
+    <div class="filter-group">
+        <label for="filter-team-vac">Filtrar por time:</label>
+        <select id="filter-team-vac">
+            <option value="">Todos</option>
+            {% for team in teams %}
+            <option value="{{ team.id }}">{{ team.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label class="toggle-label">
+            <input type="checkbox" id="toggle-past-vac">
+            <span class="toggle-slider"></span>
+            Mostrar passadas
+        </label>
+    </div>
+</div>
+
+<div id="vac-list" class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Pessoa</th>
+                <th>Time</th>
+                <th>Início</th>
+                <th>Fim</th>
+                <th>Dias</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="vac-tbody">
+            <tr><td colspan="7" class="text-center">Carregando...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div id="vac-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="vac-modal-title">Novo Evento de Férias</h2>
+            <button class="modal-close" onclick="closeVacModal()">&times;</button>
+        </div>
+        <form id="vac-form" onsubmit="saveVacation(event)">
+            <input type="hidden" id="vac-id">
+            <div class="form-group">
+                <label for="vac-person">Pessoa *</label>
+                <select id="vac-person" required>
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="vac-start">Início *</label>
+                    <input type="date" id="vac-start" required>
+                </div>
+                <div class="form-group">
+                    <label for="vac-end">Fim *</label>
+                    <input type="date" id="vac-end" required>
+                </div>
+                <div class="form-group">
+                    <label for="vac-days">Dias *</label>
+                    <input type="number" id="vac-days" required min="1" placeholder="15">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeVacModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allPeople = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadAllPeople();
+    loadVacationsList();
+    document.getElementById('filter-team-vac').addEventListener('change', loadVacationsList);
+    document.getElementById('toggle-past-vac').addEventListener('change', loadVacationsList);
+});
+
+async function loadAllPeople() {
+    try {
+        const res = await fetch('/api/v1/people');
+        allPeople = await res.json();
+    } catch (err) {
+        showToast('Erro ao carregar pessoas', 'error');
+    }
+}
+
+function populatePersonSelect(selectedId) {
+    const select = document.getElementById('vac-person');
+    select.innerHTML = '<option value="">Selecione...</option>' +
+        allPeople.map(p =>
+            `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${escapeHtml(p.name)} (${escapeHtml(p.team_name)})</option>`
+        ).join('');
+}
+
+async function loadVacationsList() {
+    const teamId = document.getElementById('filter-team-vac').value;
+    const includePast = document.getElementById('toggle-past-vac').checked;
+    const params = new URLSearchParams();
+    if (teamId) params.set('team_id', teamId);
+    if (includePast) params.set('include_past', 'true');
+
+    try {
+        const res = await fetch(`/api/v1/vacations?${params}`);
+        const data = await res.json();
+        renderVacTable(data.vacations);
+    } catch (err) {
+        showToast('Erro ao carregar férias', 'error');
+    }
+}
+
+function renderVacTable(vacations) {
+    const tbody = document.getElementById('vac-tbody');
+    if (!vacations.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum evento encontrado</td></tr>';
+        return;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    tbody.innerHTML = vacations.map(v => {
+        const isPast = v.end_date < today;
+        const statusClass = v.has_overlap ? 'status-overlap' : (isPast ? 'status-past' : 'status-future');
+        const statusText = v.has_overlap ? '⚠️ Sobreposição' : (isPast ? '✓ Concluída' : '📅 Futura');
+        return `
+        <tr class="${v.has_overlap ? 'row-overlap' : ''}">
+            <td>${escapeHtml(v.person_name)}</td>
+            <td><span class="tag">${escapeHtml(v.team_name)}</span></td>
+            <td>${v.start_date}</td>
+            <td>${v.end_date}</td>
+            <td>${v.days}</td>
+            <td><span class="${statusClass}">${statusText}</span></td>
+            <td class="actions-cell">
+                <button class="btn btn-sm btn-secondary" onclick="editVacation(${v.id})">✏️</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteVacation(${v.id})">🗑️</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function openVacationModal() {
+    document.getElementById('vac-modal-title').textContent = 'Novo Evento de Férias';
+    document.getElementById('vac-id').value = '';
+    document.getElementById('vac-form').reset();
+    populatePersonSelect(null);
+    document.getElementById('vac-modal').classList.remove('hidden');
+}
+
+function closeVacModal() {
+    document.getElementById('vac-modal').classList.add('hidden');
+    document.getElementById('vac-form').reset();
+}
+
+async function editVacation(id) {
+    try {
+        const res = await fetch(`/api/v1/vacations/${id}`);
+        const v = await res.json();
+        document.getElementById('vac-modal-title').textContent = 'Editar Férias';
+        document.getElementById('vac-id').value = v.id;
+        populatePersonSelect(v.person_id);
+        document.getElementById('vac-start').value = v.start_date;
+        document.getElementById('vac-end').value = v.end_date;
+        document.getElementById('vac-days').value = v.days;
+        document.getElementById('vac-modal').classList.remove('hidden');
+    } catch (err) {
+        showToast('Erro ao carregar férias', 'error');
+    }
+}
+
+async function saveVacation(e) {
+    e.preventDefault();
+    const id = document.getElementById('vac-id').value;
+    const body = {
+        person_id: parseInt(document.getElementById('vac-person').value),
+        start_date: document.getElementById('vac-start').value,
+        end_date: document.getElementById('vac-end').value,
+        days: parseInt(document.getElementById('vac-days').value),
+    };
+
+    const url = id ? `/api/v1/vacations/${id}` : '/api/v1/vacations';
+    const method = id ? 'PUT' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || 'Erro ao salvar', 'error');
+            return;
+        }
+        showToast(id ? 'Férias atualizadas!' : 'Férias registradas!', 'success');
+        closeVacModal();
+        loadVacationsList();
+    } catch (err) {
+        showToast('Erro de conexão', 'error');
+    }
+}
+
+async function deleteVacation(id) {
+    if (!confirm('Excluir este evento de férias?')) return;
+    try {
+        const res = await fetch(`/api/v1/vacations/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || 'Erro ao excluir', 'error');
+            return;
+        }
+        showToast('Férias excluídas!', 'success');
+        loadVacationsList();
+    } catch (err) {
+        showToast('Erro de conexão', 'error');
+    }
+}
+</script>
+{% endblock %}

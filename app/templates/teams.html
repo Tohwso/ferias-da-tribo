@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Gestão de Times{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>👥 Gestão de Times</h1>
+    <button class="btn btn-primary" onclick="openModal()">+ Novo Time</button>
+</div>
+
+<div id="teams-list" class="cards-grid">
+    {% for team in teams %}
+    <div class="card" data-id="{{ team.id }}">
+        <div class="card-header">
+            <h3>{{ team.name }}</h3>
+            <span class="tag">{{ team.person_count }} pessoa{{ 's' if team.person_count != 1 else '' }}</span>
+        </div>
+        {% if team.description %}
+        <div class="card-body">
+            <p>{{ team.description }}</p>
+        </div>
+        {% endif %}
+        <div class="card-actions">
+            <button class="btn btn-sm btn-secondary" onclick="editTeam({{ team.id }}, '{{ team.name | e }}', '{{ (team.description or '') | e }}')">✏️ Editar</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteTeam({{ team.id }}, '{{ team.name | e }}', {{ team.person_count }})">🗑️ Excluir</button>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Nenhum time cadastrado</p>
+        <button class="btn btn-primary" onclick="openModal()">Criar primeiro time</button>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">Novo Time</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="team-form" onsubmit="saveTeam(event)">
+            <input type="hidden" id="team-id">
+            <div class="form-group">
+                <label for="team-name">Nome *</label>
+                <input type="text" id="team-name" required maxlength="100" placeholder="Ex: Backend">
+            </div>
+            <div class="form-group">
+                <label for="team-description">Descrição</label>
+                <textarea id="team-description" maxlength="500" rows="3" placeholder="Descrição do time (opcional)"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openModal(id, name, description) {
+    document.getElementById('modal-title').textContent = id ? 'Editar Time' : 'Novo Time';
+    document.getElementById('team-id').value = id || '';
+    document.getElementById('team-name').value = name || '';
+    document.getElementById('team-description').value = description || '';
+    document.getElementById('modal').classList.remove('hidden');
+    document.getElementById('team-name').focus();
+}
+
+function closeModal() {
+    document.getElementById('modal').classList.add('hidden');
+    document.getElementById('team-form').reset();
+}
+
+function editTeam(id, name, description) {
+    openModal(id, name, description);
+}
+
+async function saveTeam(e) {
+    e.preventDefault();
+    const id = document.getElementById('team-id').value;
+    const body = {
+        name: document.getElementById('team-name').value.trim(),
+        description: document.getElementById('team-description').value.trim() || null,
+    };
+
+    const url = id ? `/api/v1/teams/${id}` : '/api/v1/teams';
+    const method = id ? 'PUT' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || 'Erro ao salvar', 'error');
+            return;
+        }
+        showToast(id ? 'Time atualizado!' : 'Time criado!', 'success');
+        closeModal();
+        setTimeout(() => location.reload(), 500);
+    } catch (err) {
+        showToast('Erro de conexão', 'error');
+    }
+}
+
+async function deleteTeam(id, name, personCount) {
+    if (personCount > 0) {
+        showToast(`Não é possível excluir "${name}": tem ${personCount} pessoa(s) vinculada(s).`, 'error');
+        return;
+    }
+    if (!confirm(`Excluir o time "${name}"?`)) return;
+
+    try {
+        const res = await fetch(`/api/v1/teams/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || 'Erro ao excluir', 'error');
+            return;
+        }
+        showToast('Time excluído!', 'success');
+        setTimeout(() => location.reload(), 500);
+    } catch (err) {
+        showToast('Erro de conexão', 'error');
+    }
+}
+</script>
+{% endblock %}

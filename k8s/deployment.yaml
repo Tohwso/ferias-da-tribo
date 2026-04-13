@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ferias-da-tribo
+  namespace: feriasdatribo
+  labels:
+    app: ferias-da-tribo
+    squad: arebaba
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ferias-da-tribo
+  template:
+    metadata:
+      labels:
+        app: ferias-da-tribo
+    spec:
+      containers:
+        - name: ferias-da-tribo
+          image: registry.picpay.com/ferias-da-tribo:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ferias-da-tribo-db
+                  key: url
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ferias-da-tribo
+  namespace: feriasdatribo
+  labels:
+    app: ferias-da-tribo
+spec:
+  selector:
+    app: ferias-da-tribo
+  ports:
+    - port: 80
+      targetPort: 8000
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ferias-da-tribo
+  namespace: feriasdatribo
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: ferias-da-tribo.internal.picpay.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ferias-da-tribo
+                port:
+                  number: 80

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Gestão de Pessoas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🧑‍💼 Gestão de Pessoas</h1>
+    <button class="btn btn-primary" onclick="openPersonModal()">+ Nova Pessoa</button>
+</div>
+
+<div class="filters-bar">
+    <div class="filter-group">
+        <label for="filter-team-people">Filtrar por time:</label>
+        <select id="filter-team-people">
+            <option value="">Todos</option>
+            {% for team in teams %}
+            <option value="{{ team.id }}">{{ team.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div id="people-list" class="cards-grid">
+    <div class="empty-state"><p>Carregando...</p></div>
+</div>
+
+<!-- Modal -->
+<div id="person-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="person-modal-title">Nova Pessoa</h2>
+            <button class="modal-close" onclick="closePersonModal()">&times;</button>
+        </div>
+        <form id="person-form" onsubmit="savePerson(event)">
+            <input type="hidden" id="person-id">
+            <div class="form-group">
+                <label for="person-name">Nome *</label>
+                <input type="text" id="person-name" required maxlength="150" placeholder="Nome completo">
+            </div>
+            <div class="form-group">
+                <label for="person-email">Email *</label>
+                <input type="text" id="person-email" required maxlength="254" placeholder="email@empresa.com">
+            </div>
+            <div class="form-group">
+                <label for="person-team">Time *</label>
+                <select id="person-team" required>
+                    <option value="">Selecione...</option>
+                    {% for team in teams %}
+                    <option value="{{ team.id }}">{{ team.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closePersonModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadPeople();
+    document.getElementById('filter-team-people').addEventListener('change', loadPeople);
+});
+
+async function loadPeople() {
+    const teamId = document.getElementById('filter-team-people').value;
+    const params = teamId ? `?team_id=${teamId}` : '';
+    try {
+        const res = await fetch(`/api/v1/people${params}`);
+        const people = await res.json();
+        renderPeople(people);
+    } catch (err) {
+        showToast('Erro ao carregar pessoas', 'error');
+    }
+}
+
+function renderPeople(people) {
+    const container = document.getElementById('people-list');
+    if (!people.length) {
+        container.innerHTML = '<div class="empty-state"><p>Nenhuma pessoa cadastrada</p></div>';
+        return;
+    }
+    container.innerHTML = people.map(p => `
+        <div class="card" data-id="${p.id}">
+            <div class="card-header">
+                <h3>${escapeHtml(p.name)}</h3>
+                <span class="tag">${escapeHtml(p.team_name)}</span>
+            </div>
+            <div class="card-body">
+                <p class="email">📧 ${escapeHtml(p.email)}</p>
+                <p class="meta">${p.vacation_count} férias cadastrada${p.vacation_count !== 1 ? 's' : ''}</p>
+            </div>
+            <div class="card-actions">
+                <button class="btn btn-sm btn-secondary" onclick="editPerson(${p.id})">✏️ Editar</button>
+                <button class="btn btn-sm btn-danger" onclick="deletePerson(${p.id}, '${escapeHtml(p.name)}')">🗑️ Excluir</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openPersonModal() {
+    document.getElementById('person-modal-title').textContent = 'Nova Pessoa';
+    document.getElementById('person-id').value = '';
+    document.getElementById('person-form').reset();
+    document.getElementById('person-modal').classList.remove('hidden');
+    document.getElementById('person-name').focus();
+}
+
+function closePersonModal() {
+    document.getElementById('person-modal').classList.add('hidden');
+    document.getElementById('person-form').reset();
+}
+
+async function editPerson(id) {
+    try {
+        const res = await fetch(`/api/v1/people/${id}`);
+        const p = await res.json();
+        document.getElementById('person-modal-title').textContent = 'Editar Pessoa';
+        document.getElementById('person-id').value = p.id;
+        document.getElementById('person-name').value = p.name;
+        document.getElementById('person-email').value = p.email;
+        document.getElementById('person-team').value = p.team_id;
+        document.getElementById('person-modal').classList.remove('hidden');
+    } catch (err) {
+        showToast('Erro ao carregar pessoa', 'error');
+    }
+}
+
+async function savePerson(e) {
+    e.preventDefault();
+    const id = document.getElementById('person-id').value;
+    const body = {
+        name: document.getElementById('person-name').value.trim(),
+        email: document.getElementById('person-email').value.trim(),
+        team_id: parseInt(document.getElementById('person-team').value),
+    };
+
+    const url = id ? `/api/v1/people/${id}` : '/api/v1/people';
+    const method = id ? 'PUT' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || 'Erro ao salvar', 'error');
+            return;
+        }
+        showToast(id ? 'Pessoa atualizada!' : 'Pessoa cadastrada!', 'success');
+        closePersonModal();
+        loadPeople();
+    } catch (err) {
+        showToast('Erro de conexão', 'error');
+    }
+}
+
+async function deletePerson(id, name) {
+    if (!confirm(`Excluir "${name}" e todas as suas férias?`)) return;
+    try {
+        const res = await fetch(`/api/v1/people/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || 'Erro ao excluir', 'error');
+            return;
+        }
+        showToast('Pessoa excluída!', 'success');
+        loadPeople();
+    } catch (err) {
+        showToast('Erro de conexão', 'error');
+    }
+}
+</script>
+{% endblock %}

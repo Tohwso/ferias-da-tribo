@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏖️ Férias do Time</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header class="header">
+    <div class="header-inner">
+        <h1 class="logo">🏖️ Férias do Time</h1>
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="agenda">📅 Agenda</button>
+            <button class="nav-tab" data-tab="teams">👥 Times</button>
+            <button class="nav-tab" data-tab="people">🧑 Pessoas</button>
+            <button class="nav-tab" data-tab="vacations">🗓️ Férias</button>
+        </nav>
+    </div>
+</header>
+
+<!-- ═══════════════ TOAST ═══════════════ -->
+<div id="toast-container"></div>
+
+<!-- ═══════════════ TAB: AGENDA ═══════════════ -->
+<main class="container">
+<section id="tab-agenda" class="tab-content active">
+    <div class="section-header">
+        <div>
+            <h2>Agenda de Férias</h2>
+            <p class="subtitle">Visualização rápida — futuras por padrão</p>
+        </div>
+    </div>
+
+    <div class="filters-bar">
+        <div class="filter-group">
+            <label for="agenda-filter-team">Time:</label>
+            <select id="agenda-filter-team">
+                <option value="">Todos os times</option>
+            </select>
+        </div>
+        <label class="toggle-label">
+            <input type="checkbox" id="agenda-toggle-past">
+            <span class="toggle-slider"></span>
+            Mostrar passadas
+        </label>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="data-table" id="agenda-table">
+            <thead>
+                <tr>
+                    <th>Pessoa</th>
+                    <th>Time</th>
+                    <th>Início</th>
+                    <th>Fim</th>
+                    <th class="text-center">Dias</th>
+                    <th class="text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody id="agenda-tbody">
+                <tr><td colspan="6" class="empty-cell">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═══════════════ TAB: TIMES ═══════════════ -->
+<section id="tab-teams" class="tab-content">
+    <div class="section-header">
+        <div>
+            <h2>👥 Gestão de Times</h2>
+            <p class="subtitle">Crie, edite e remova times</p>
+        </div>
+        <button class="btn btn-primary" onclick="openTeamModal()">+ Novo Time</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Descrição</th>
+                    <th class="text-center">Pessoas</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="teams-tbody">
+                <tr><td colspan="4" class="empty-cell">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═══════════════ TAB: PESSOAS ═══════════════ -->
+<section id="tab-people" class="tab-content">
+    <div class="section-header">
+        <div>
+            <h2>🧑 Gestão de Pessoas</h2>
+            <p class="subtitle">Cadastre membros e vincule a times</p>
+        </div>
+        <button class="btn btn-primary" onclick="openPersonModal()">+ Nova Pessoa</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Time</th>
+                    <th class="text-center">Férias</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="people-tbody">
+                <tr><td colspan="5" class="empty-cell">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ═══════════════ TAB: FÉRIAS ═══════════════ -->
+<section id="tab-vacations" class="tab-content">
+    <div class="section-header">
+        <div>
+            <h2>🗓️ Gestão de Férias</h2>
+            <p class="subtitle">Cadastre e gerencie eventos de férias</p>
+        </div>
+        <button class="btn btn-primary" onclick="openVacationModal()">+ Novas Férias</button>
+    </div>
+
+    <div class="filters-bar">
+        <div class="filter-group">
+            <label for="vac-filter-team">Time:</label>
+            <select id="vac-filter-team">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <label class="toggle-label">
+            <input type="checkbox" id="vac-toggle-past">
+            <span class="toggle-slider"></span>
+            Mostrar passadas
+        </label>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Pessoa</th>
+                    <th>Time</th>
+                    <th>Início</th>
+                    <th>Fim</th>
+                    <th class="text-center">Dias</th>
+                    <th>Notas</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="vacations-tbody">
+                <tr><td colspan="7" class="empty-cell">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</main>
+
+<!-- ═══════════════ MODAL: TIME ═══════════════ -->
+<div id="modal-team" class="modal hidden" onclick="closeOnBackdrop(event, 'modal-team')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2 id="modal-team-title">Novo Time</h2>
+            <button class="modal-close" onclick="closeModal('modal-team')">&times;</button>
+        </div>
+        <form id="form-team" onsubmit="submitTeam(event)">
+            <input type="hidden" id="team-id">
+            <div class="form-group">
+                <label for="team-name">Nome *</label>
+                <input type="text" id="team-name" required maxlength="100" placeholder="Ex: Backend">
+            </div>
+            <div class="form-group">
+                <label for="team-desc">Descrição</label>
+                <textarea id="team-desc" maxlength="500" rows="3" placeholder="Descrição opcional do time"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('modal-team')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════ MODAL: PESSOA ═══════════════ -->
+<div id="modal-person" class="modal hidden" onclick="closeOnBackdrop(event, 'modal-person')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2 id="modal-person-title">Nova Pessoa</h2>
+            <button class="modal-close" onclick="closeModal('modal-person')">&times;</button>
+        </div>
+        <form id="form-person" onsubmit="submitPerson(event)">
+            <input type="hidden" id="person-id">
+            <div class="form-group">
+                <label for="person-name">Nome *</label>
+                <input type="text" id="person-name" required maxlength="150" placeholder="Ex: João Silva">
+            </div>
+            <div class="form-group">
+                <label for="person-email">Email *</label>
+                <input type="email" id="person-email" required maxlength="254" placeholder="joao@empresa.com">
+            </div>
+            <div class="form-group">
+                <label for="person-team">Time *</label>
+                <select id="person-team" required>
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('modal-person')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════ MODAL: FÉRIAS ═══════════════ -->
+<div id="modal-vacation" class="modal hidden" onclick="closeOnBackdrop(event, 'modal-vacation')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2 id="modal-vacation-title">Novas Férias</h2>
+            <button class="modal-close" onclick="closeModal('modal-vacation')">&times;</button>
+        </div>
+        <form id="form-vacation" onsubmit="submitVacation(event)">
+            <input type="hidden" id="vacation-id">
+            <div class="form-group">
+                <label for="vacation-person">Pessoa *</label>
+                <select id="vacation-person" required>
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="vacation-start">Início *</label>
+                    <input type="date" id="vacation-start" required>
+                </div>
+                <div class="form-group">
+                    <label for="vacation-end">Fim *</label>
+                    <input type="date" id="vacation-end" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="vacation-notes">Notas</label>
+                <textarea id="vacation-notes" maxlength="500" rows="2" placeholder="Observações (opcional)"></textarea>
+            </div>
+            <p class="days-preview" id="days-preview"></p>
+            <div class="form-actions">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('modal-vacation')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════ MODAL: CONFIRMAÇÃO ═══════════════ -->
+<div id="modal-confirm" class="modal hidden" onclick="closeOnBackdrop(event, 'modal-confirm')">
+    <div class="modal-content modal-sm" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Confirmar exclusão</h2>
+            <button class="modal-close" onclick="closeModal('modal-confirm')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="confirm-message">Tem certeza que deseja excluir?</p>
+        </div>
+        <div class="form-actions" style="padding: 0 1.5rem 1.5rem;">
+            <button class="btn btn-ghost" onclick="closeModal('modal-confirm')">Cancelar</button>
+            <button class="btn btn-danger" id="confirm-btn" onclick="confirmDelete()">Excluir</button>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <p>Sistema de Férias v1.0 — 100% local, sem dependências externas</p>
+</footer>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

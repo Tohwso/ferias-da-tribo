@@ -1,0 +1,22 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ferias-da-tribo
+  title: Férias da Tribo
+  description: Sistema de gestão de férias para visibilidade de agendas do time
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    github.com/project-slug: PicPay/ferias-da-tribo
+  tags:
+    - python
+    - fastapi
+    - internal-tool
+  links:
+    - url: https://ferias-da-tribo.picpay.com
+      title: App
+      icon: web
+spec:
+  type: service
+  lifecycle: experimental
+  owner: squad-arebaba
+  system: internal-tools
