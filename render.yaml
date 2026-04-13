@@ -1,0 +1,11 @@
+services:
+  - type: web
+    runtime: docker
+    name: ferias
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # set manually in dashboard (Neon connection string)
+      - key: PORT
+        value: "8000"
